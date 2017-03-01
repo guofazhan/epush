@@ -1,5 +1,7 @@
 package com.epush.apns;
 
+import com.epush.apns.http2.Http2Response;
+
 import java.util.Date;
 
 /**
@@ -32,7 +34,11 @@ public class PushNotificationResponse<T extends ApnsPushNotification> {
 	/**
 	 * 
 	 */
-	public PushNotificationResponse() {
+	public PushNotificationResponse(Http2Response<T> response) {
+		this.success = response.isSuccess();
+		this.pushNotification = response.getData();
+		this.rejectionReason = response.getRejectionReason();
+		this.tokenExpirationTimestamp = response.getTokenExpirationTimestamp();
 	}
 
 	/**

@@ -1,9 +1,8 @@
 package com.epush.apns;
 
-import com.epush.apns.authentication.P12;
-import com.epush.apns.authentication.P8;
-import com.epush.apns.http2.proxy.ProxyHandlerFactory;
-import io.netty.handler.ssl.SslProvider;
+import com.epush.apns.exception.ApnsException;
+
+import java.util.Collection;
 
 /**
  *
@@ -12,31 +11,41 @@ import io.netty.handler.ssl.SslProvider;
  * @see [相关类/方法]
  * @since [产品/模块版本]
  */
-public final class ApnsService {
+public final class ApnsService
+		implements Push<PushNotificationResponse, ApnsPushNotification> {
 
 	/**
-	 * 环境信息
+	 * http2客户端
 	 */
-	private String environment;
+	private final ApnsHttp2Client http2Client;
+
+	protected ApnsService(ApnsHttp2Client http2Client) {
+		this.http2Client = http2Client;
+	}
 
 	/**
-	 * 代理信息
-	 */
-	private ProxyHandlerFactory proxyHandlerFactory;
-
-	/**
-	 * ssl信息
-	 */
-	private SslProvider sslProvider;
-
-	/**
+	 * 单个推送
 	 *
+	 * @param apnsPushNotification
+	 * @return
+	 * @throws ApnsException
 	 */
-	private P12 p12;
+	@Override
+	public PushNotificationResponse push(
+			ApnsPushNotification apnsPushNotification) throws ApnsException {
+		return http2Client.push(apnsPushNotification);
+	}
 
-	private P8 p8;
-
-	private boolean useTokenAuthentication;
-
-
+	/**
+	 * 批量推送
+	 *
+	 * @param list
+	 * @return
+	 * @throws ApnsException
+	 */
+	@Override
+	public Collection<PushNotificationResponse> push(
+			Collection<ApnsPushNotification> list) throws ApnsException {
+		return http2Client.push(list);
+	}
 }

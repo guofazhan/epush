@@ -27,6 +27,25 @@ public final class ApnsConfigure {
 	 */
 	public static final String DEVELOPMENT_APNS_HOST = "api.development.push.apple.com";
 
+	public static final String APNS_AUTHORIZATION_HEADER = "authorization";
+
+	public static final String APNS_COLLAPSE_ID_HEADER = "apns-collapse-id";
+
+	public static final String APNS_PRIORITY_HEADER = "apns-priority";
+
+	public static final String APNS_TOPIC_HEADER = "apns-topic";
+
+	public static final String APNS_PATH_PREFIX = "/3/device/";
+
+	public static final String APNS_EXPIRATION_HEADER = "apns-expiration";
+
+	/**
+	 * 连接状态
+	 */
+	public enum ConnStatus {
+		CLOSE, OPEN
+	}
+
 	/**
 	 * 
 	 */
@@ -64,11 +83,11 @@ public final class ApnsConfigure {
 			this.code = code;
 		}
 
-		protected int getCode() {
+		public int getCode() {
 			return this.code;
 		}
 
-		protected static DeliveryPriority getFromCode(final int code) {
+		public static DeliveryPriority getFromCode(final int code) {
 			for (final DeliveryPriority priority : DeliveryPriority.values()) {
 				if (priority.getCode() == code) {
 					return priority;

@@ -150,4 +150,12 @@ public class P8 {
 
 		return p8;
 	}
+
+	public Map<String, Set<String>> getTopicsByTeamIdMap() {
+		return topicsByTeamIdMap;
+	}
+
+	public Map<String, AuthenticationTokenSupplier> getAuthenticationTokenSuppliersByTopic() {
+		return authenticationTokenSuppliersByTopic;
+	}
 }

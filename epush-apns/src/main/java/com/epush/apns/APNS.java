@@ -31,4 +31,11 @@ public class APNS {
 	public static ApnsPushNotification.PushNotificationBuilder newNotificationBuilder() {
 		return new ApnsPushNotification.PushNotificationBuilder();
 	}
+
+	/**
+	 * @return
+	 */
+	public static ApnsServiceBuilder newApnsServiceBuilder() {
+		return new ApnsServiceBuilder();
+	}
 }

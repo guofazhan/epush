@@ -1,5 +1,6 @@
 package com.epush.apns;
 
+import com.epush.apns.authentication.P12;
 import com.epush.apns.exception.InvalidSSLConfig;
 import io.netty.handler.codec.http2.Http2SecurityUtil;
 import io.netty.handler.ssl.*;
@@ -12,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import javax.net.ssl.SSLException;
 import java.io.File;
 import java.io.InputStream;
-import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 
 /**
@@ -29,19 +29,9 @@ public class SslContextBuilder {
 			.getLogger(SslContextBuilder.class);
 
 	/**
-	 * 客户端证书
+	 *
 	 */
-	private X509Certificate clientCertificate;
-
-	/**
-	 * 客户端私钥
-	 */
-	private PrivateKey privateKey;
-
-	/**
-	 * 私钥密码
-	 */
-	private String privateKeyPassword;
+	private P12 p12;
 
 	/**
 	 * 
@@ -63,85 +53,62 @@ public class SslContextBuilder {
 	 */
 	private X509Certificate[] trustedServerCertificates;
 
+	public P12 getP12() {
+		return p12;
+	}
 
-    /**
-     * @return
-     */
-    public X509Certificate getClientCertificate() {
-        return clientCertificate;
-    }
+	public SslContextBuilder setP12(P12 p12) {
+		this.p12 = p12;
+		return this;
+	}
 
-    /**
-     * @param clientCertificate
-     */
-    public SslContextBuilder setClientCertificate(X509Certificate clientCertificate) {
-        this.clientCertificate = clientCertificate;
-        return this;
-    }
+	public SslProvider getSslProvider() {
+		return sslProvider;
+	}
 
-    public PrivateKey getPrivateKey() {
-        return privateKey;
-    }
+	public SslContextBuilder setSslProvider(SslProvider sslProvider) {
+		this.sslProvider = sslProvider;
+		return this;
+	}
 
-    public SslContextBuilder setPrivateKey(PrivateKey privateKey) {
-        this.privateKey = privateKey;
-        return this;
-    }
+	public File getTrustedServerCertificatePemFile() {
+		return trustedServerCertificatePemFile;
+	}
 
-    public String getPrivateKeyPassword() {
-        return privateKeyPassword;
-    }
+	public SslContextBuilder setTrustedServerCertificatePemFile(
+			File trustedServerCertificatePemFile) {
+		this.trustedServerCertificatePemFile = trustedServerCertificatePemFile;
+		return this;
+	}
 
-    public SslContextBuilder setPrivateKeyPassword(String privateKeyPassword) {
-        this.privateKeyPassword = privateKeyPassword;
-        return this;
-    }
+	public InputStream getTrustedServerCertificateInputStream() {
+		return trustedServerCertificateInputStream;
+	}
 
-    public SslProvider getSslProvider() {
-        return sslProvider;
-    }
+	public SslContextBuilder setTrustedServerCertificateInputStream(
+			InputStream trustedServerCertificateInputStream) {
+		this.trustedServerCertificateInputStream = trustedServerCertificateInputStream;
+		return this;
+	}
 
-    public SslContextBuilder setSslProvider(SslProvider sslProvider) {
-        this.sslProvider = sslProvider;
-        return this;
-    }
+	public X509Certificate[] getTrustedServerCertificates() {
+		return trustedServerCertificates;
+	}
 
-    public File getTrustedServerCertificatePemFile() {
-        return trustedServerCertificatePemFile;
-    }
+	public SslContextBuilder setTrustedServerCertificates(
+			X509Certificate[] trustedServerCertificates) {
+		this.trustedServerCertificates = trustedServerCertificates;
+		return this;
+	}
 
-    public SslContextBuilder setTrustedServerCertificatePemFile(File trustedServerCertificatePemFile) {
-        this.trustedServerCertificatePemFile = trustedServerCertificatePemFile;
-        return this;
-    }
-
-    public InputStream getTrustedServerCertificateInputStream() {
-        return trustedServerCertificateInputStream;
-    }
-
-    public SslContextBuilder setTrustedServerCertificateInputStream(InputStream trustedServerCertificateInputStream) {
-        this.trustedServerCertificateInputStream = trustedServerCertificateInputStream;
-        return this;
-    }
-
-    public X509Certificate[] getTrustedServerCertificates() {
-        return trustedServerCertificates;
-    }
-
-    public SslContextBuilder setTrustedServerCertificates(X509Certificate[] trustedServerCertificates) {
-        this.trustedServerCertificates = trustedServerCertificates;
-        return this;
-    }
-
-    /**
-	 *  构建 SslContext
+	/**
+	 * 构建 SslContext
+	 * 
 	 * @return
 	 * @throws InvalidSSLConfig
 	 */
 	public SslContext build() throws InvalidSSLConfig {
 		SslContext sslContext = null;
-		boolean useTlsAuthentication;
-
 		{
 			SslProvider sslProvider = null;
 			if (this.sslProvider != null) {
@@ -174,12 +141,9 @@ public class SslContextBuilder {
 							SelectedListenerFailureBehavior.ACCEPT,
 							ApplicationProtocolNames.HTTP_2));
 
-			useTlsAuthentication = (this.clientCertificate != null
-					&& this.privateKey != null);
-
-			if (useTlsAuthentication) {
-				builder.keyManager(this.privateKey, this.privateKeyPassword,
-						this.clientCertificate);
+			if (p12 != null) {
+				builder.keyManager(p12.getPrivateKey(), p12.getKeyPassword(),
+						p12.getClientCertificate());
 			}
 
 			if (this.trustedServerCertificatePemFile != null) {

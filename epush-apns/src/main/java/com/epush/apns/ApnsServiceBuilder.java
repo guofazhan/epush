@@ -1,5 +1,14 @@
 package com.epush.apns;
 
+import com.epush.apns.authentication.P12;
+import com.epush.apns.authentication.P8;
+import com.epush.apns.http2.proxy.ProxyHandlerFactory;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,19 +18,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-import javax.net.ssl.SSLException;
-
-import com.epush.apns.authentication.P12;
-import com.epush.apns.authentication.P8;
-import com.epush.apns.http2.proxy.ProxyHandlerFactory;
-
-import io.netty.handler.codec.http2.Http2SecurityUtil;
-import io.netty.handler.ssl.*;
-
-import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
-
 /**
- * <一句话功能简述> <功能详细描述>
  *
  * @author guofazhan
  * @version [版本号, 2017/2/28]
@@ -29,6 +26,9 @@ import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
  * @since [产品/模块版本]
  */
 public class ApnsServiceBuilder {
+
+	private static final Logger logger = LoggerFactory
+			.getLogger(ApnsServiceBuilder.class);
 
 	/**
 	 * 环境信息
@@ -63,6 +63,9 @@ public class ApnsServiceBuilder {
 
 	private Long gracefulShutdownTimeout;
 	private TimeUnit gracefulShutdownTimeoutUnit;
+
+	protected ApnsServiceBuilder() {
+	}
 
 	/**
 	 *
@@ -197,67 +200,24 @@ public class ApnsServiceBuilder {
 		return this;
 	}
 
+	/**
+	 *
+	 * @return
+	 */
 	public ApnsService build() {
-
-		final SslContext sslContext;
-		final boolean useTlsAuthentication;
-		{
-			final SslProvider sslProvider;
-
-			if (this.sslProvider != null) {
-				sslProvider = this.sslProvider;
-			} else {
-				if (OpenSsl.isAvailable()) {
-					if (OpenSsl.isAlpnSupported()) {
-						log.info(
-								"Native SSL provider is available and supports ALPN; will use native provider.");
-						sslProvider = SslProvider.OPENSSL;
-					} else {
-						log.info(
-								"Native SSL provider is available, but does not support ALPN; will use JDK SSL provider.");
-						sslProvider = SslProvider.JDK;
-					}
-				} else {
-					log.info(
-							"Native SSL provider not available; will use JDK SSL provider.");
-					sslProvider = SslProvider.JDK;
-				}
-			}
-
-			final SslContextBuilder sslContextBuilder = SslContextBuilder
-					.forClient().sslProvider(sslProvider)
-					.ciphers(Http2SecurityUtil.CIPHERS,
-							SupportedCipherSuiteFilter.INSTANCE)
-					.applicationProtocolConfig(new ApplicationProtocolConfig(
-							Protocol.ALPN, SelectorFailureBehavior.NO_ADVERTISE,
-							SelectedListenerFailureBehavior.ACCEPT,
-							ApplicationProtocolNames.HTTP_2));
-
-			useTlsAuthentication = (this.clientCertificate != null
-					&& this.privateKey != null);
-
-			if (useTlsAuthentication) {
-				sslContextBuilder.keyManager(this.privateKey,
-						this.privateKeyPassword, this.clientCertificate);
-			}
-
-			if (this.trustedServerCertificatePemFile != null) {
-				sslContextBuilder
-						.trustManager(this.trustedServerCertificatePemFile);
-			} else if (this.trustedServerCertificateInputStream != null) {
-				sslContextBuilder
-						.trustManager(this.trustedServerCertificateInputStream);
-			} else if (this.trustedServerCertificates != null) {
-				sslContextBuilder.trustManager(this.trustedServerCertificates);
-			}
-
-			sslContext = sslContextBuilder.build();
+		// 构建SslContext
+		final SslContext sslContext = new SslContextBuilder()
+				.setSslProvider(this.sslProvider).setP12(p12).build();
+		final ApnsHttp2Client apnsClient = new ApnsHttp2Client();
+		apnsClient.setEnvironment(this.environment);
+		//
+		apnsClient.setSslContext(sslContext);
+		if (p8 != null) {
+			apnsClient.setP8(p8);
+			apnsClient.setUseTokenAuthentication(true);
 		}
 
-		final ApnsClient apnsClient = new ApnsClient(sslContext,
-				!useTlsAuthentication, this.eventLoopGroup);
-
-		apnsClient.setMetricsListener(this.metricsListener);
+		// apnsClient.setMetricsListener(this.metricsListener);
 		apnsClient.setProxyHandlerFactory(this.proxyHandlerFactory);
 
 		if (this.connectionTimeout != null) {
@@ -276,7 +236,7 @@ public class ApnsServiceBuilder {
 							.toMillis(this.gracefulShutdownTimeout));
 		}
 
-		return apnsClient;
-		return new ApnsService();
+		apnsClient.init();
+		return new ApnsService(apnsClient);
 	}
 }

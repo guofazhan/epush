@@ -174,10 +174,34 @@ public class ApnsPushNotification {
 		return builder.toString();
 	}
 
+	public String getToken() {
+		return token;
+	}
+
+	public String getPayload() {
+		return payload;
+	}
+
+	public Date getInvalidationTime() {
+		return invalidationTime;
+	}
+
+	public ApnsConfigure.DeliveryPriority getPriority() {
+		return priority;
+	}
+
+	public String getTopic() {
+		return topic;
+	}
+
+	public String getCollapseId() {
+		return collapseId;
+	}
+
 	/**
 	 * 通知构建器
 	 */
-	static class PushNotificationBuilder {
+	public static class PushNotificationBuilder {
 
 		/**
 		 * 
