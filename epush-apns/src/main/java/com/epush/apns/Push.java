@@ -6,7 +6,7 @@ import java.util.Collection;
 
 /**
  * 推送接口
- * 
+ *
  * @author guofazhan
  * @version [版本号, 2017/2/28]
  * @see [相关类/方法]
@@ -14,22 +14,13 @@ import java.util.Collection;
  */
 public interface Push<T, E> {
 
-	/**
-	 * 单个推送
-	 * 
-	 * @param e
-	 * @return
-	 * @throws ApnsException
-	 */
-	T push(E e) throws ApnsException;
-
-	/**
-	 * 批量推送
-	 * 
-	 * @param list
-	 * @return
-	 * @throws ApnsException
-	 */
-	Collection<T> push(Collection<E> list) throws ApnsException;
+    /**
+     * 单个推送
+     *
+     * @param e
+     * @return
+     * @throws ApnsException
+     */
+    T push(E e) throws ApnsException;
 
 }

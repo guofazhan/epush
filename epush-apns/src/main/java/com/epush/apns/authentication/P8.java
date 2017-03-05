@@ -1,5 +1,6 @@
 package com.epush.apns.authentication;
 
+import com.epush.apns.exception.ApnsException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.base64.Base64;
@@ -19,7 +20,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- *
  * @author guofazhan
  * @version [版本号, 2017/2/28]
  * @see [相关类/方法]
@@ -27,127 +27,146 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class P8 {
 
-	private final Map<String, Set<String>> topicsByTeamIdMap = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> topicsByTeamIdMap = new ConcurrentHashMap<>();
 
-	private final Map<String, AuthenticationTokenSupplier> authenticationTokenSuppliersByTopic = new ConcurrentHashMap<>();
+    private final Map<String, AuthenticationTokenSupplier> authenticationTokenSuppliersByTopic = new ConcurrentHashMap<>();
 
-	private P8() {
-	}
 
-	public static P8 buildP8(File signingKeyPemFile, final String teamId,
-			final String keyId, final Collection<String> topics)
-			throws IOException, NoSuchAlgorithmException, InvalidKeyException {
+    public Map<String, Set<String>> getTopicsByTeamIdMap() {
+        return topicsByTeamIdMap;
+    }
 
-		return buildP8(signingKeyPemFile, teamId, keyId,
-				topics.toArray(new String[0]));
-	}
+    public AuthenticationTokenSupplier getAuthenticationTokenSupplierForTopic(final String topic) throws ApnsException {
+        final AuthenticationTokenSupplier supplier = this.authenticationTokenSuppliersByTopic.get(topic);
 
-	public static P8 buildP8(final File signingKeyPemFile, final String teamId,
-			final String keyId, final String... topics)
-			throws IOException, InvalidKeyException, NoSuchAlgorithmException {
-		try (final FileInputStream signingKeyInputStream = new FileInputStream(
-				signingKeyPemFile)) {
-			return buildP8(signingKeyInputStream, teamId, keyId, topics);
-		}
-	}
+        if (supplier == null) {
+            throw new ApnsException("No signing key found for topic " + topic);
+        }
 
-	public static P8 buildP8(final InputStream signingKeyInputStream,
-			final String teamId, final String keyId,
-			final Collection<String> topics)
-			throws IOException, InvalidKeyException, NoSuchAlgorithmException {
-		return buildP8(signingKeyInputStream, teamId, keyId,
-				topics.toArray(new String[0]));
-	}
+        return supplier;
+    }
 
-	public static P8 buildP8(final InputStream signingKeyInputStream,
-			final String teamId, final String keyId, final String... topics)
-			throws IOException, NoSuchAlgorithmException, InvalidKeyException {
+    public Map<String, AuthenticationTokenSupplier> getAuthenticationTokenSuppliersByTopic() {
+        return authenticationTokenSuppliersByTopic;
+    }
 
-		final ECPrivateKey signingKey;
-		{
-			final String base64EncodedPrivateKey;
-			{
-				final StringBuilder privateKeyBuilder = new StringBuilder();
-				final BufferedReader reader = new BufferedReader(
-						new InputStreamReader(signingKeyInputStream));
-				boolean haveReadHeader = false;
-				boolean haveReadFooter = false;
+    private P8() {
+    }
 
-				for (String line; (line = reader.readLine()) != null;) {
-					if (!haveReadHeader) {
-						if (line.contains("BEGIN PRIVATE KEY")) {
-							haveReadHeader = true;
-							continue;
-						}
-					} else {
-						if (line.contains("END PRIVATE KEY")) {
-							haveReadFooter = true;
-							break;
-						} else {
-							privateKeyBuilder.append(line);
-						}
-					}
-				}
+    public static P8 buildP8(File signingKeyPemFile, final String teamId,
+                             final String keyId, final Collection<String> topics)
+            throws IOException, NoSuchAlgorithmException, InvalidKeyException {
 
-				if (!(haveReadHeader && haveReadFooter)) {
-					throw new IOException(
-							"Could not find private key header/footer");
-				}
+        return buildP8(signingKeyPemFile, teamId, keyId,
+                topics.toArray(new String[0]));
+    }
 
-				base64EncodedPrivateKey = privateKeyBuilder.toString();
-			}
+    public static P8 buildP8(final File signingKeyPemFile, final String teamId,
+                             final String keyId, final String... topics)
+            throws IOException, InvalidKeyException, NoSuchAlgorithmException {
+        try (final FileInputStream signingKeyInputStream = new FileInputStream(
+                signingKeyPemFile)) {
+            return buildP8(signingKeyInputStream, teamId, keyId, topics);
+        }
+    }
 
-			final ByteBuf wrappedEncodedPrivateKey = Unpooled
-					.wrappedBuffer(base64EncodedPrivateKey
-							.getBytes(StandardCharsets.US_ASCII));
+    public static P8 buildP8(final InputStream signingKeyInputStream,
+                             final String teamId, final String keyId,
+                             final Collection<String> topics)
+            throws IOException, InvalidKeyException, NoSuchAlgorithmException {
+        return buildP8(signingKeyInputStream, teamId, keyId,
+                topics.toArray(new String[0]));
+    }
 
-			try {
-				final ByteBuf decodedPrivateKey = Base64
-						.decode(wrappedEncodedPrivateKey);
+    public static P8 buildP8(final InputStream signingKeyInputStream,
+                             final String teamId, final String keyId, final String... topics)
+            throws IOException, NoSuchAlgorithmException, InvalidKeyException {
 
-				try {
-					final byte[] keyBytes = new byte[decodedPrivateKey
-							.readableBytes()];
-					decodedPrivateKey.readBytes(keyBytes);
+        final ECPrivateKey signingKey;
+        {
+            final String base64EncodedPrivateKey;
+            {
+                final StringBuilder privateKeyBuilder = new StringBuilder();
+                final BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(signingKeyInputStream));
+                boolean haveReadHeader = false;
+                boolean haveReadFooter = false;
 
-					final PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(
-							keyBytes);
-					final KeyFactory keyFactory = KeyFactory.getInstance("EC");
-					signingKey = (ECPrivateKey) keyFactory
-							.generatePrivate(keySpec);
-				} catch (final InvalidKeySpecException e) {
-					throw new InvalidKeyException(e);
-				} finally {
-					decodedPrivateKey.release();
-				}
-			} finally {
-				wrappedEncodedPrivateKey.release();
-			}
-		}
+                for (String line; (line = reader.readLine()) != null; ) {
+                    if (!haveReadHeader) {
+                        if (line.contains("BEGIN PRIVATE KEY")) {
+                            haveReadHeader = true;
+                            continue;
+                        }
+                    } else {
+                        if (line.contains("END PRIVATE KEY")) {
+                            haveReadFooter = true;
+                            break;
+                        } else {
+                            privateKeyBuilder.append(line);
+                        }
+                    }
+                }
 
-		return buildP8(signingKey, teamId, keyId, topics);
-	}
+                if (!(haveReadHeader && haveReadFooter)) {
+                    throw new IOException(
+                            "Could not find private key header/footer");
+                }
 
-	public static P8 buildP8(final ECPrivateKey signingKey, final String teamId,
-			final String keyId, final String... topics)
-			throws InvalidKeyException, NoSuchAlgorithmException {
+                base64EncodedPrivateKey = privateKeyBuilder.toString();
+            }
 
-		// if (!this.useTokenAuthentication) {
-		// throw new IllegalStateException(
-		// "Cannot register signing keys with clients that use TLS-based
-		// authentication.");
-		// }
+            final ByteBuf wrappedEncodedPrivateKey = Unpooled
+                    .wrappedBuffer(base64EncodedPrivateKey
+                            .getBytes(StandardCharsets.US_ASCII));
 
-		P8 p8 = new P8();
-		final AuthenticationTokenSupplier tokenSupplier = new AuthenticationTokenSupplier(
-				teamId, keyId, signingKey);
-		final Set<String> topicSet = new HashSet<>();
-		for (final String topic : topics) {
-			topicSet.add(topic);
-			p8.authenticationTokenSuppliersByTopic.put(topic, tokenSupplier);
-		}
-		p8.topicsByTeamIdMap.put(teamId, topicSet);
+            try {
+                final ByteBuf decodedPrivateKey = Base64
+                        .decode(wrappedEncodedPrivateKey);
 
-		return p8;
-	}
+                try {
+                    final byte[] keyBytes = new byte[decodedPrivateKey
+                            .readableBytes()];
+                    decodedPrivateKey.readBytes(keyBytes);
+
+                    final PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(
+                            keyBytes);
+                    final KeyFactory keyFactory = KeyFactory.getInstance("EC");
+                    signingKey = (ECPrivateKey) keyFactory
+                            .generatePrivate(keySpec);
+                } catch (final InvalidKeySpecException e) {
+                    throw new InvalidKeyException(e);
+                } finally {
+                    decodedPrivateKey.release();
+                }
+            } finally {
+                wrappedEncodedPrivateKey.release();
+            }
+        }
+
+        return buildP8(signingKey, teamId, keyId, topics);
+    }
+
+    public static P8 buildP8(final ECPrivateKey signingKey, final String teamId,
+                             final String keyId, final String... topics)
+            throws InvalidKeyException, NoSuchAlgorithmException {
+
+        // if (!this.useTokenAuthentication) {
+        // throw new IllegalStateException(
+        // "Cannot register signing keys with clients that use TLS-based
+        // authentication.");
+        // }
+
+        P8 p8 = new P8();
+        final AuthenticationTokenSupplier tokenSupplier = new AuthenticationTokenSupplier(
+                teamId, keyId, signingKey);
+        final Set<String> topicSet = new HashSet<>();
+        for (final String topic : topics) {
+            topicSet.add(topic);
+            p8.authenticationTokenSuppliersByTopic.put(topic, tokenSupplier);
+        }
+        p8.topicsByTeamIdMap.put(teamId, topicSet);
+
+        return p8;
+    }
 }
