@@ -20,7 +20,7 @@ public class ExampleApp {
 		final String token = "919c33d368633e51f6ef7a853d6b876333a177a0ff955ddd698fe12b5bb7b71d";
 		try {
 			final ApnsService server = APNS.newApnsServiceBuilder()
-					.setP8(new File("E:\\P8\\apns.p8"), "8TS34KC67Y",
+					.setP8(new File("D:\\P8\\apns_auth_key_KQH5SH3B63.p8"), "8TS34KC67Y",
 							"KQH5SH3B63", "cn.10086.app")
 					.setEnvironment(ApnsConfigure.Environment.PRODUCTION.name())
 					.setSslProvider(SslProvider.OPENSSL).build();
@@ -28,7 +28,7 @@ public class ExampleApp {
 					.newNotificationBuilder()
 					.setPayload(APNS.newPayload().setAlertBody("Example!")
 							.toPayloadStr())
-					.setToken(token).setTopic("1").build();
+					.setToken(token).setTopic("cn.10086.app").build();
 			for (int i = 0; i < 1; i++) {
 				System.out.println(server.push(pushNotification));
 			}

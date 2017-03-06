@@ -17,139 +17,133 @@ import java.security.SignatureException;
  * @since [产品/模块版本]
  */
 public final class ApnsService
-		implements Push<PushNotificationResponse, ApnsPushNotification> {
-	private static final Logger logger = LoggerFactory
-			.getLogger(ApnsService.class);
+        implements Push<PushNotificationResponse, ApnsPushNotification> {
+    private static final Logger logger = LoggerFactory
+            .getLogger(ApnsService.class);
 
-	/**
-	 * 环境信息
-	 */
-	private String environment;
+    /**
+     * 环境信息
+     */
+    private String environment;
 
-	/**
-	 * P8信息
-	 */
-	private P8 p8;
+    /**
+     * P8信息
+     */
+    private P8 p8;
 
-	/**
-	 * 请求客户端
-	 */
-	private Http2Client client;
+    /**
+     * 请求客户端
+     */
+    private Http2Client client;
 
-	/**
-	 *
-	 */
-	protected ApnsService() {
-	}
+    /**
+     *
+     */
+    protected ApnsService() {
+    }
 
-	public ApnsService setEnvironment(String environment) {
-		this.environment = environment;
-		return this;
-	}
+    /**
+     *
+     * @param environment
+     * @return
+     */
+    public ApnsService setEnvironment(String environment) {
+        this.environment = environment;
+        return this;
+    }
 
-	public P8 getP8() {
-		return p8;
-	}
+    /**
+     *
+     * @return
+     */
+    public P8 getP8() {
+        return p8;
+    }
 
-	public ApnsService setP8(P8 p8) {
-		this.p8 = p8;
-		return this;
-	}
+    /**
+     *
+     * @param p8
+     * @return
+     */
+    public ApnsService setP8(P8 p8) {
+        this.p8 = p8;
+        return this;
+    }
 
-	public Http2Client getClient() {
-		return client;
-	}
+    public Http2Client getClient() {
+        return client;
+    }
 
-	public ApnsService setClient(Http2Client client) {
-		this.client = client;
-		return this;
-	}
+    public ApnsService setClient(Http2Client client) {
+        this.client = client;
+        return this;
+    }
 
-	/**
-	 * 单个推送
-	 *
-	 * @param pushNotification
-	 * @return
-	 * @throws ApnsException
-	 */
-	@Override
-	public PushNotificationResponse push(ApnsPushNotification pushNotification)
-			throws ApnsException {
-		PushNotificationResponse response = null;
-		try {
-			Http2Response http2Response = client
-					.request(buildHttp2Request(pushNotification));
+    /**
+     * 单个推送
+     *
+     * @param pushNotification
+     * @return
+     * @throws ApnsException
+     */
+    @Override
+    public PushNotificationResponse push(ApnsPushNotification pushNotification)
+            throws ApnsException {
+        PushNotificationResponse response = null;
+        try {
+            Http2Response http2Response = client
+                    .request(buildHttp2Request(pushNotification));
 
-			if (null != http2Response) {
-				response = parseHttp2Response(http2Response);
-				response.setPushNotification(pushNotification);
-			} else {
-				response = PushNotificationResponse.build(pushNotification,
-						false, "HTTP2 Response Is Empty");
-			}
-		} catch (Exception e) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("push APNS Http2 is Error {}", e);
-			}
-			response = PushNotificationResponse.build(pushNotification, false,
-					e.getMessage());
-		}
+            if (null != http2Response) {
+                response = parseHttp2Response(http2Response);
+                response.setPushNotification(pushNotification);
+            } else {
+                response = PushNotificationResponse.build(pushNotification,
+                        false, "HTTP2 Response Is Empty");
+            }
+        } catch (Exception e) {
+            logger.error("Push Error : ", e);
+            response = PushNotificationResponse.build(pushNotification, false,
+                    e.getMessage());
+        }
 
-		return response;
-	}
+        return response;
+    }
 
-	protected Http2Request buildHttp2Request(
-			ApnsPushNotification apnsPushNotification)
-			throws SignatureException {
-		if (logger.isDebugEnabled()) {
-			logger.debug("Build Http2 Request from ApnsPushNotification {}",
-					apnsPushNotification);
-		}
-		final HttpHeaders httpHeaders = new DefaultHttpHeaders()
-				.addInt(ApnsConfigure.APNS_EXPIRATION_HEADER, 0);
-		if (this.p8 != null) {
-			httpHeaders.add(ApnsConfigure.APNS_AUTHORIZATION_HEADER,
-					"bearer " + this.p8
-							.getAuthenticationTokenSupplierForTopic(
-									apnsPushNotification.getTopic())
-							.getToken());
-		} else {
-		}
+    /**
+     *  构建 Http2 请求
+     * @param apnsPushNotification
+     * @return
+     * @throws SignatureException
+     */
+    protected Http2Request buildHttp2Request(
+            ApnsPushNotification apnsPushNotification)
+            throws SignatureException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Build Http2 Request from ApnsPushNotification {}",
+                    apnsPushNotification);
+        }
 
-		if (apnsPushNotification.getCollapseId() != null) {
-			httpHeaders.add(ApnsConfigure.APNS_COLLAPSE_ID_HEADER,
-					apnsPushNotification.getCollapseId());
-		}
+        ApnsConfigure.Environment environment = ApnsConfigure.Environment
+                .getEnvironment(this.environment);
+        final Host host = new Host(environment.getHost(),
+                environment.getPort());
+        // 构建一个HTTP2请求
+        return apnsPushNotification.toHttp2Request(host,getP8());
+    }
 
-		if (apnsPushNotification.getPriority() != null) {
-			httpHeaders.addInt(ApnsConfigure.APNS_PRIORITY_HEADER,
-					apnsPushNotification.getPriority().getCode());
-		}
-
-		if (apnsPushNotification.getTopic() != null) {
-			httpHeaders.add(ApnsConfigure.APNS_TOPIC_HEADER,
-					apnsPushNotification.getTopic());
-		}
-
-		ApnsConfigure.Environment environment = ApnsConfigure.Environment
-				.getEnvironment(this.environment);
-		final Host host = new Host(environment.getHost(),
-				environment.getPort());
-		// 构建一个HTTP2请求
-		return new Http2Request(apnsPushNotification.getPayload(), httpHeaders,
-				host, ApnsConfigure.APNS_PATH_PREFIX
-						+ apnsPushNotification.getToken());
-	}
-
-	protected PushNotificationResponse parseHttp2Response(
-			Http2Response http2Response) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("Parser Http2 Response {} To PushNotificationResponse",
-					http2Response);
-		}
-
-		System.out.println(http2Response);
-		return null;
-	}
+    /**
+     * 解析HTTP2响应 报文
+     * @param http2Response
+     * @return
+     */
+    protected PushNotificationResponse parseHttp2Response(
+            Http2Response http2Response) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Parser Http2 Response {} To PushNotificationResponse",
+                    http2Response);
+        }
+        return PushNotificationResponse.build(http2Response);
+    }
 
 }

@@ -1,5 +1,12 @@
 package com.epush.apns;
 
+import com.epush.apns.authentication.P8;
+import com.epush.apns.http2.Host;
+import com.epush.apns.http2.Http2Request;
+import io.netty.handler.codec.http.DefaultHttpHeaders;
+import io.netty.handler.codec.http.HttpHeaders;
+
+import java.security.SignatureException;
 import java.util.Date;
 import java.util.Objects;
 
@@ -47,6 +54,37 @@ public class ApnsPushNotification {
                                  final String payload) {
         this(token, topic, payload, null,
                 ApnsConfigure.DeliveryPriority.IMMEDIATE, null);
+    }
+
+    /**
+     * @param host
+     * @param p8
+     * @return
+     * @throws SignatureException
+     */
+    public Http2Request toHttp2Request(Host host,final P8 p8) throws SignatureException {
+        final HttpHeaders httpHeaders = new DefaultHttpHeaders()
+                .addInt(ApnsConfigure.APNS_EXPIRATION_HEADER, 0);
+        if (p8 != null) {
+            httpHeaders.add(ApnsConfigure.APNS_AUTHORIZATION_HEADER,
+                    "bearer " + p8.getAuthenticationTokenSupplierForTopic(getTopic()).getToken());
+        } else {
+        }
+
+        if (getCollapseId() != null) {
+            httpHeaders.add(ApnsConfigure.APNS_COLLAPSE_ID_HEADER,
+                    getCollapseId());
+        }
+
+        if (getPriority() != null) {
+            httpHeaders.addInt(ApnsConfigure.APNS_PRIORITY_HEADER,
+                    getPriority().getCode());
+        }
+
+        // 构建一个HTTP2请求
+        return new Http2Request(getPayload(), httpHeaders,
+                host, ApnsConfigure.APNS_PATH_PREFIX
+                + getToken());
     }
 
     /**
@@ -151,6 +189,7 @@ public class ApnsPushNotification {
         }
         return true;
     }
+
 
     @Override
     public String toString() {
