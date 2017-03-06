@@ -1,7 +1,5 @@
 package com.epush.apns;
 
-import com.epush.apns.http2.Http2Response;
-
 import java.util.Date;
 
 /**
@@ -12,12 +10,12 @@ import java.util.Date;
  * @see [相关类/方法]
  * @since [产品/模块版本]
  */
-public class PushNotificationResponse<T extends ApnsPushNotification> {
+public class PushNotificationResponse {
 
 	/**
 	 * 通知详情
 	 */
-	private T pushNotification;
+	private ApnsPushNotification pushNotification;
 	/**
 	 * 成功表示
 	 */
@@ -31,14 +29,27 @@ public class PushNotificationResponse<T extends ApnsPushNotification> {
 	 */
 	private Date tokenExpirationTimestamp;
 
+	protected PushNotificationResponse() {
+	}
+
+	public static PushNotificationResponse build(
+			ApnsPushNotification pushNotification) {
+		return new PushNotificationResponse().setSuccess(true)
+				.setPushNotification(pushNotification).setRejectionReason("")
+				.setTokenExpirationTimestamp(null);
+	}
+
 	/**
 	 * 
+	 * @param success
+	 * @param rejectionReason
+	 * @return
 	 */
-	public PushNotificationResponse(Http2Response<T> response) {
-		this.success = response.isSuccess();
-		this.pushNotification = response.getData();
-		this.rejectionReason = response.getRejectionReason();
-		this.tokenExpirationTimestamp = response.getTokenExpirationTimestamp();
+	public static PushNotificationResponse build(boolean success,
+			String rejectionReason) {
+		return new PushNotificationResponse().setSuccess(success)
+				.setPushNotification(null).setRejectionReason(rejectionReason)
+				.setTokenExpirationTimestamp(null);
 	}
 
 	/**
@@ -46,22 +57,41 @@ public class PushNotificationResponse<T extends ApnsPushNotification> {
 	 * @param pushNotification
 	 * @param success
 	 * @param rejectionReason
-	 * @param tokenExpirationTimestamp
+	 * @return
 	 */
-	public PushNotificationResponse(T pushNotification, boolean success,
-			String rejectionReason, Date tokenExpirationTimestamp) {
-		this.pushNotification = pushNotification;
-		this.success = success;
-		this.rejectionReason = rejectionReason;
-		this.tokenExpirationTimestamp = tokenExpirationTimestamp;
+	public static PushNotificationResponse build(
+			ApnsPushNotification pushNotification, boolean success,
+			String rejectionReason) {
+		return new PushNotificationResponse().setSuccess(success)
+				.setPushNotification(pushNotification)
+				.setRejectionReason(rejectionReason)
+				.setTokenExpirationTimestamp(null);
 	}
 
-	public T getPushNotification() {
+	/**
+	 * 构建推送响应
+	 * 
+	 * @param pushNotification
+	 * @param success
+	 * @param rejectionReason
+	 * @param tokenExpirationTimestamp
+	 * @return
+	 */
+	public static PushNotificationResponse build(
+			ApnsPushNotification pushNotification, boolean success,
+			String rejectionReason, Date tokenExpirationTimestamp) {
+		return new PushNotificationResponse().setSuccess(success)
+				.setPushNotification(pushNotification)
+				.setRejectionReason(rejectionReason)
+				.setTokenExpirationTimestamp(tokenExpirationTimestamp);
+	}
+
+	public ApnsPushNotification getPushNotification() {
 		return pushNotification;
 	}
 
-	public PushNotificationResponse<? extends ApnsPushNotification> setPushNotification(
-			T pushNotification) {
+	public PushNotificationResponse setPushNotification(
+			ApnsPushNotification pushNotification) {
 		this.pushNotification = pushNotification;
 		return this;
 	}
@@ -70,8 +100,7 @@ public class PushNotificationResponse<T extends ApnsPushNotification> {
 		return success;
 	}
 
-	public PushNotificationResponse<? extends ApnsPushNotification> setSuccess(
-			boolean success) {
+	public PushNotificationResponse setSuccess(boolean success) {
 		this.success = success;
 		return this;
 	}
@@ -80,8 +109,7 @@ public class PushNotificationResponse<T extends ApnsPushNotification> {
 		return rejectionReason;
 	}
 
-	public PushNotificationResponse<? extends ApnsPushNotification> setRejectionReason(
-			String rejectionReason) {
+	public PushNotificationResponse setRejectionReason(String rejectionReason) {
 		this.rejectionReason = rejectionReason;
 		return this;
 	}
@@ -90,7 +118,7 @@ public class PushNotificationResponse<T extends ApnsPushNotification> {
 		return tokenExpirationTimestamp;
 	}
 
-	public PushNotificationResponse<? extends ApnsPushNotification> setTokenExpirationTimestamp(
+	public PushNotificationResponse setTokenExpirationTimestamp(
 			Date tokenExpirationTimestamp) {
 		this.tokenExpirationTimestamp = tokenExpirationTimestamp;
 		return this;

@@ -7,35 +7,34 @@ import com.epush.apns.http2.exception.Http2Exception;
  */
 public interface Client {
 
-    /**
-     * @throws Http2Exception
-     */
-    void init() throws Http2Exception;
+	/**
+	 * @throws Http2Exception
+	 */
+	void init() throws Http2Exception;
 
-    /**
-     * @return
-     * @throws Http2Exception
-     */
-    boolean start() throws Http2Exception;
+	/**
+	 * @return
+	 * @throws Http2Exception
+	 */
+	boolean start() throws Http2Exception;
 
-    /**
-     * @param request
-     * @return
-     * @throws Http2Exception
-     */
-    <T> Http2Response<T> request(Http2Request<T> request) throws Http2Exception;
+	/**
+	 * @param request
+	 * @return
+	 * @throws Http2Exception
+	 */
+	 Http2Response request(Http2Request request) throws Http2Exception;
 
-    /**
-     * @return
-     * @throws Http2Exception
-     */
-    boolean isRuning() throws Http2Exception;
+	/**
+	 * @return
+	 * @throws Http2Exception
+	 */
+	boolean isRuning() throws Http2Exception;
 
-    /**
-     * @return
-     * @throws Http2Exception
-     */
-    boolean shutdown() throws Http2Exception;
-
+	/**
+	 * @return
+	 * @throws Http2Exception
+	 */
+	boolean shutdown() throws Http2Exception;
 
 }

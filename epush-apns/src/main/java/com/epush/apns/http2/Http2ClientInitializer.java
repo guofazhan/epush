@@ -12,83 +12,88 @@ import io.netty.handler.ssl.SslContext;
 import static io.netty.handler.logging.LogLevel.INFO;
 
 /**
- * Created by G2Y on 2017/3/2.
+ * http2初始化
  */
-public abstract class Http2ClientInitializer extends ChannelInitializer<SocketChannel> {
+public abstract class Http2ClientInitializer
+		extends ChannelInitializer<SocketChannel> {
 
-    private static final Http2FrameLogger logger = new Http2FrameLogger(INFO, Http2ClientInitializer.class);
-    private final SslContext sslCtx;
-    private final int maxContentLength;
-    private HttpToHttp2ConnectionHandler connectionHandler;
-    private DefaultHttp2ConnectionHandler connectionHandler1;
-    private Http2SettingsHandler settingsHandler;
+	private static final Http2FrameLogger logger = new Http2FrameLogger(INFO,
+			Http2ClientInitializer.class);
+	private final SslContext sslCtx;
+	private final int maxContentLength;
+	private HttpToHttp2ConnectionHandler connectionHandler;
+	private Http2SettingsHandler settingsHandler;
 
-    private HttpResponseHandler responseHandler;
+	private HttpResponseHandler responseHandler;
 
-    public Http2ClientInitializer(SslContext sslCtx, int maxContentLength) {
-        this.sslCtx = sslCtx;
-        this.maxContentLength = maxContentLength;
-    }
+	public Http2ClientInitializer(SslContext sslCtx, int maxContentLength) {
+		this.sslCtx = sslCtx;
+		this.maxContentLength = maxContentLength;
+	}
 
-    public HttpResponseHandler getResponseHandler() {
-        return responseHandler;
-    }
+	public HttpResponseHandler getResponseHandler() {
+		return responseHandler;
+	}
 
-    public Http2SettingsHandler getSettingsHandler() {
-        return settingsHandler;
-    }
+	public Http2SettingsHandler getSettingsHandler() {
+		return settingsHandler;
+	}
 
-    @Override
-    protected void initChannel(SocketChannel socketChannel) throws Exception {
+	@Override
+	protected void initChannel(SocketChannel socketChannel) throws Exception {
+		responseHandler = new HttpResponseHandler();
+		settingsHandler = new Http2SettingsHandler(socketChannel.newPromise());
+		final Http2Connection connection = new DefaultHttp2Connection(false);
 
-        responseHandler = new HttpResponseHandler();
-        settingsHandler = new Http2SettingsHandler(socketChannel.newPromise());
-        final Http2Connection connection = new DefaultHttp2Connection(false);
-        connectionHandler1 =
-                new DefaultHttp2ConnectionHandlerBuilder(maxContentLength).server(false).encoderEnforceMaxConcurrentStreams(true).frameLogger(logger).build();
+		connectionHandler = new HttpToHttp2ConnectionHandlerBuilder()
+				.frameListener(
+						new DelegatingDecompressorFrameListener(connection,
+								new InboundHttp2ToHttpAdapterBuilder(connection)
+										.maxContentLength(maxContentLength)
+										.propagateSettings(true).build()))
+				.frameLogger(logger).connection(connection).build();
+		configure(socketChannel);
+		if (sslCtx != null) {
+			ChannelPipeline pipeline = socketChannel.pipeline();
+			pipeline.addLast(sslCtx.newHandler(socketChannel.alloc()));
+			// We must wait for the handshake to finish and the protocol to be
+			// negotiated before configuring
+			// the HTTP/2 components of the pipeline.
+			pipeline.addLast(new ApplicationProtocolNegotiationHandler("") {
+				@Override
+				protected void configurePipeline(ChannelHandlerContext ctx,
+						String protocol) {
+					if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
+						ChannelPipeline p = ctx.pipeline();
+						p.addLast(connectionHandler);
+						configureEndOfPipeline(p);
+						return;
+					}
+					ctx.close();
+					throw new IllegalStateException(
+							"unknown protocol: " + protocol);
+				}
+			});
 
-//        connectionHandler = new HttpToHttp2ConnectionHandlerBuilder()
-//                .frameListener(new DelegatingDecompressorFrameListener(
-//                        connection,
-//                        new InboundHttp2ToHttpAdapterBuilder(connection)
-//                                .maxContentLength(maxContentLength)
-//                                .propagateSettings(true)
-//                                .build()))
-//                .frameLogger(logger)
-//                .connection(connection)
-//                .build();
-        configure(socketChannel);
-        if (sslCtx != null) {
-            ChannelPipeline pipeline = socketChannel.pipeline();
-            pipeline.addLast(sslCtx.newHandler(socketChannel.alloc()));
-            // We must wait for the handshake to finish and the protocol to be negotiated before configuring
-            // the HTTP/2 components of the pipeline.
-            pipeline.addLast(new ApplicationProtocolNegotiationHandler("") {
-                @Override
-                protected void configurePipeline(ChannelHandlerContext ctx, String protocol) {
-                    if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
-                        ChannelPipeline p = ctx.pipeline();
-                        //p.addLast(connectionHandler);
-                        p.addLast(connectionHandler1);
-                        configureEndOfPipeline(p);
-                        return;
-                    }
-                    ctx.close();
-                    throw new IllegalStateException("unknown protocol: " + protocol);
-                }
-            });
+		} else {
+			throw new IllegalStateException("unknown SslContext: " + sslCtx);
+		}
 
-        } else {
-            throw new IllegalStateException("unknown SslContext: " + sslCtx);
-        }
+	}
 
+	/**
+	 * 
+	 * @param pipeline
+	 */
+	protected void configureEndOfPipeline(ChannelPipeline pipeline) {
+		pipeline.addLast(settingsHandler, responseHandler);
+	}
 
-    }
-
-    protected void configureEndOfPipeline(ChannelPipeline pipeline) {
-        pipeline.addLast(settingsHandler, responseHandler);
-    }
-
-    public abstract void configure(SocketChannel channel);
+	/**
+	 * 初始化配置信息 对外暴露子类扩展
+	 * 
+	 * @param channel
+	 */
+	public abstract void configure(SocketChannel channel);
 
 }
