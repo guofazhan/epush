@@ -1,102 +1,77 @@
 package com.epush.apns.http2;
 
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http2.DefaultHttp2Headers;
+import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http2.Http2Headers;
+import io.netty.handler.codec.http2.HttpConversionUtil;
 import io.netty.util.AsciiString;
+import io.netty.util.CharsetUtil;
 
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
+
+import static io.netty.buffer.Unpooled.wrappedBuffer;
 
 /**
- * <一句话功能简述> <功能详细描述>
- *
- * @author guofazhan
- * @version [版本号, 2017/3/1]
- * @see [相关类/方法]
- * @since [产品/模块版本]
+ * Created by G2Y on 2017/3/3.
  */
 public class Http2Request<T> {
 
-	private Http2Headers header;
+    /**
+     *
+     */
+    private final T request;
 
-	private T data;
+    /**
+     *
+     */
+    private final Http2Headers headers;
 
-	public T getData() {
-		return data;
-	}
+    private final HttpHeaders httpHeaders;
 
-	public void setData(T data) {
-		this.data = data;
-	}
+    /**
+     *
+     */
+    private final Host host;
 
-	public Http2Headers getHeader() {
-		return header;
-	}
 
-	public void setHeader(Http2Headers header) {
-		this.header = header;
-	}
+    public Http2Request(T request, Http2Headers headers, Host host, HttpHeaders httpHeaders) {
+        this.headers = headers;
+        this.host = host;
+        this.request = request;
+        this.httpHeaders = httpHeaders;
+    }
 
-	public static Http2HeadersBuilder newBuilder() {
-		return new Http2HeadersBuilder();
-	}
 
-	static class Http2HeadersBuilder {
-		private String authority;
-		private String path;
-		private Map<AsciiString, Object> params = new HashMap<>();
+    public T getRequest() {
+        return request;
+    }
 
-		public String getAuthority() {
-			return authority;
-		}
+    public Http2Headers getHeaders() {
+        return headers;
+    }
 
-		public Http2HeadersBuilder setAuthority(String authority) {
-			this.authority = authority;
-			return this;
-		}
+    public Host getHost() {
+        return host;
+    }
 
-		public String getPath() {
-			return path;
-		}
+    /**
+     * Http2Request 转化为FullHttpRequest
+     *
+     * @return
+     */
+    public FullHttpRequest toFullHttpRequest() {
+        Objects.requireNonNull(headers, "headers must be set before building an FullHttpRequest.");
+        String reqStr = (String) this.request;
+        DefaultFullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, headers.path().toString(), wrappedBuffer(reqStr.getBytes(CharsetUtil.UTF_8)));
+        HttpScheme scheme = HttpScheme.HTTPS;
+        AsciiString hostName = new AsciiString(host.getHost() + ':' + host.getPort());
+        request.headers().add(HttpHeaderNames.HOST, hostName);
+        request.headers().add(HttpConversionUtil.ExtensionHeaderNames.SCHEME.text(), scheme.name());
+        request.headers().add(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+        request.headers().add(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.DEFLATE);
+        request.headers().setAll(httpHeaders);
+        return request;
+    }
 
-		public Http2HeadersBuilder setPath(String path) {
-			this.path = path;
-			return this;
-		}
-
-		public Map<AsciiString, Object> getParams() {
-			return params;
-		}
-
-		public Http2HeadersBuilder setParams(Map<AsciiString, Object> params) {
-			this.params = params;
-			return this;
-		}
-
-		public Http2HeadersBuilder addParam(String name, int value) {
-			params.put(new AsciiString(name), value);
-			return this;
-		}
-
-		public Http2HeadersBuilder addParam(String name, String value) {
-			params.put(new AsciiString(name), value);
-			return this;
-		}
-
-		public Http2Headers build() {
-			Http2Headers headers = new DefaultHttp2Headers()
-					.method(HttpMethod.POST.asciiName());
-			headers.authority(this.authority).path(this.path);
-			for (AsciiString key : params.keySet()) {
-				if (params.get(key) instanceof String) {
-					headers.add(key, (String) params.get(key));
-				} else {
-					headers.addInt(key, (int) params.get(key));
-				}
-			}
-			return headers;
-		}
-
-	}
 }

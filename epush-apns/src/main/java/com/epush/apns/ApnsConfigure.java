@@ -1,10 +1,11 @@
 package com.epush.apns;
 
 import com.epush.apns.exception.ApnsException;
+import io.netty.util.AsciiString;
 
 /**
  * ApnsConfigure
- * 
+ *
  * @author guofazhan
  * @version [版本号, 2017/2/28]
  * @see [相关类/方法]
@@ -12,148 +13,136 @@ import com.epush.apns.exception.ApnsException;
  */
 public final class ApnsConfigure {
 
-	/**
-	 * APNS默认请求端口
-	 */
-	public static final int DEFAULT_APNS_PORT = 443;
+    public static final String APNS_PATH_PREFIX = "/3/device/";
+    public static final AsciiString APNS_EXPIRATION_HEADER = new AsciiString("apns-expiration");
+    public static final AsciiString APNS_TOPIC_HEADER = new AsciiString("apns-topic");
+    public static final AsciiString APNS_PRIORITY_HEADER = new AsciiString("apns-priority");
+    public static final AsciiString APNS_COLLAPSE_ID_HEADER = new AsciiString("apns-collapse-id");
+    public static final AsciiString APNS_AUTHORIZATION_HEADER = new AsciiString("authorization");
 
-	/**
-	 * 生产环境apns地址
-	 */
-	public static final String PRODUCTION_APNS_HOST = "api.push.apple.com";
+    /**
+     * APNS默认请求端口
+     */
+    public static final int DEFAULT_APNS_PORT = 443;
 
-	/**
-	 * 测试环境apns地址
-	 */
-	public static final String DEVELOPMENT_APNS_HOST = "api.development.push.apple.com";
+    /**
+     * 生产环境apns地址
+     */
+    public static final String PRODUCTION_APNS_HOST = "api.push.apple.com";
 
-	public static final String APNS_AUTHORIZATION_HEADER = "authorization";
+    /**
+     * 测试环境apns地址
+     */
+    public static final String DEVELOPMENT_APNS_HOST = "api.development.push.apple.com";
 
-	public static final String APNS_COLLAPSE_ID_HEADER = "apns-collapse-id";
+    /**
+     *
+     */
+    public enum DeliveryPriority {
 
-	public static final String APNS_PRIORITY_HEADER = "apns-priority";
+        /**
+         * <p>
+         * Indicates that the APNs server should attempt to deliver a
+         * notification immediately. Additionally, according to Apple's
+         * documentation:
+         * </p>
+         * <p/>
+         * <blockquote>
+         * <p>
+         * The push notification must trigger an alert, sound, or badge on the
+         * device. It is an error to use this priority for a push that contains
+         * only the {@code content-available} key.
+         * </p>
+         * </blockquote>
+         */
+        IMMEDIATE(10),
 
-	public static final String APNS_TOPIC_HEADER = "apns-topic";
+        /**
+         * <p>
+         * Indicates that the APNs server should attempt to deliver a
+         * notification "at a time that conserves power on the device receiving
+         * it."
+         * </p>
+         */
+        CONSERVE_POWER(5);
 
-	public static final String APNS_PATH_PREFIX = "/3/device/";
+        private final int code;
 
-	public static final String APNS_EXPIRATION_HEADER = "apns-expiration";
+        DeliveryPriority(final int code) {
+            this.code = code;
+        }
 
-	/**
-	 * 连接状态
-	 */
-	public enum ConnStatus {
-		CLOSE, OPEN
-	}
+        protected int getCode() {
+            return this.code;
+        }
 
-	/**
-	 * 
-	 */
-	public enum DeliveryPriority {
+        protected static DeliveryPriority getFromCode(final int code) {
+            for (final DeliveryPriority priority : DeliveryPriority.values()) {
+                if (priority.getCode() == code) {
+                    return priority;
+                }
+            }
 
-		/**
-		 * <p>
-		 * Indicates that the APNs server should attempt to deliver a
-		 * notification immediately. Additionally, according to Apple's
-		 * documentation:
-		 * </p>
-		 *
-		 * <blockquote>
-		 * <p>
-		 * The push notification must trigger an alert, sound, or badge on the
-		 * device. It is an error to use this priority for a push that contains
-		 * only the {@code content-available} key.
-		 * </p>
-		 * </blockquote>
-		 */
-		IMMEDIATE(10),
+            throw new IllegalArgumentException(String
+                    .format("No delivery priority found with code %d", code));
+        }
+    }
 
-		/**
-		 * <p>
-		 * Indicates that the APNs server should attempt to deliver a
-		 * notification "at a time that conserves power on the device receiving
-		 * it."
-		 * </p>
-		 */
-		CONSERVE_POWER(5);
+    /**
+     * 环境信息
+     */
+    public enum Environment {
+        // 正式环境
+        PRODUCTION(PRODUCTION_APNS_HOST, DEFAULT_APNS_PORT),
+        // 测试环境
+        DEVELOPMENT(DEVELOPMENT_APNS_HOST, DEFAULT_APNS_PORT);
+        private final String host;
+        private final int port;
 
-		private final int code;
+        Environment(final String host, final int port) {
+            this.host = host;
+            this.port = port;
+        }
 
-		DeliveryPriority(final int code) {
-			this.code = code;
-		}
+        /**
+         * 根据环境名称获取环境信息
+         *
+         * @param name
+         * @return
+         */
+        public static Environment getEnvironment(String name) {
+            Environment result = null;
+            Environment[] arr = Environment.values();
+            for (Environment temp : arr) {
+                if (!temp.name().equalsIgnoreCase(name))
+                    continue;
+                result = temp;
+                break;
+            }
+            // 未找到给定的环境时抛出异常
+            if (result == null)
+                throw new ApnsException(
+                        "Not find this name [" + name + "] Environment");
+            return result;
+        }
 
-		public int getCode() {
-			return this.code;
-		}
+        /**
+         * 返回当前环境的host
+         *
+         * @return
+         */
+        public String getHost() {
+            return host;
+        }
 
-		public static DeliveryPriority getFromCode(final int code) {
-			for (final DeliveryPriority priority : DeliveryPriority.values()) {
-				if (priority.getCode() == code) {
-					return priority;
-				}
-			}
-
-			throw new IllegalArgumentException(String
-					.format("No delivery priority found with code %d", code));
-		}
-	}
-
-	/**
-	 * 环境信息
-	 */
-	public enum Environment {
-		// 正式环境
-		PRODUCTION(PRODUCTION_APNS_HOST, DEFAULT_APNS_PORT),
-		// 测试环境
-		DEVELOPMENT(DEVELOPMENT_APNS_HOST, DEFAULT_APNS_PORT);
-		private final String host;
-		private final int port;
-
-		Environment(final String host, final int port) {
-			this.host = host;
-			this.port = port;
-		}
-
-		/**
-		 * 根据环境名称获取环境信息
-		 * 
-		 * @param name
-		 * @return
-		 */
-		public static Environment getEnvironment(String name) {
-			Environment result = null;
-			Environment[] arr = Environment.values();
-			for (Environment temp : arr) {
-				if (!temp.name().equalsIgnoreCase(name))
-					continue;
-				result = temp;
-				break;
-			}
-			// 未找到给定的环境时抛出异常
-			if (result == null)
-				throw new ApnsException(
-						"Not find this name [" + name + "] Environment");
-			return result;
-		}
-
-		/**
-		 * 返回当前环境的host
-		 * 
-		 * @return
-		 */
-		public String getHost() {
-			return host;
-		}
-
-		/**
-		 * 返回当前环境的port
-		 * 
-		 * @return
-		 */
-		public int getPort() {
-			return port;
-		}
-	}
+        /**
+         * 返回当前环境的port
+         *
+         * @return
+         */
+        public int getPort() {
+            return port;
+        }
+    }
 
 }

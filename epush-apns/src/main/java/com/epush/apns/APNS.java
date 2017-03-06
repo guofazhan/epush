@@ -1,7 +1,6 @@
 package com.epush.apns;
 
 /**
- *
  * @author guofazhan
  * @version [版本号, 2017/2/28]
  * @see [相关类/方法]
@@ -9,33 +8,35 @@ package com.epush.apns;
  */
 public class APNS {
 
-	/**
-	 */
-	private APNS() {
-	}
+    /**
+     */
+    private APNS() {
+    }
 
-	/**
-	 * 构建一个ApnsPayload
-	 * 
-	 * @return
-	 */
-	public static ApnsPayload newPayload() {
-		return new ApnsPayload();
-	}
+    /**
+     * 构建一个ApnsPayload
+     *
+     * @return
+     */
+    public static ApnsPayload newPayload() {
+        return new ApnsPayload();
+    }
 
-	/**
-	 * 通知构建器
-	 * 
-	 * @return
-	 */
-	public static ApnsPushNotification.PushNotificationBuilder newNotificationBuilder() {
-		return new ApnsPushNotification.PushNotificationBuilder();
-	}
+    /**
+     * 通知构建器
+     *
+     * @return
+     */
+    public static ApnsPushNotification.PushNotificationBuilder newNotificationBuilder() {
+        return new ApnsPushNotification.PushNotificationBuilder();
+    }
 
-	/**
-	 * @return
-	 */
-	public static ApnsServiceBuilder newApnsServiceBuilder() {
-		return new ApnsServiceBuilder();
-	}
+    /**
+     * 通知构建器
+     *
+     * @return
+     */
+    public static ApnsServiceBuilder newApnsServiceBuilder() {
+        return new ApnsServiceBuilder();
+    }
 }
