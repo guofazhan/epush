@@ -8,8 +8,9 @@ import com.epush.apns.http2.Http2Request;
 import com.epush.apns.http2.Http2Response;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.HttpHeaders;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http2.DefaultHttp2Headers;
+import io.netty.handler.codec.http2.Http2Headers;
 
 import java.security.SignatureException;
 
@@ -19,11 +20,7 @@ import java.security.SignatureException;
  * @see [相关类/方法]
  * @since [产品/模块版本]
  */
-public final class ApnsService
-		implements Push<PushNotificationResponse, ApnsPushNotification> {
-
-	private static final Logger logger = LoggerFactory
-			.getLogger(ApnsService.class);
+public final class ApnsService implements Push<PushNotificationResponse<ApnsPushNotification>, ApnsPushNotification> {
 
 	/**
 	 * 环境信息

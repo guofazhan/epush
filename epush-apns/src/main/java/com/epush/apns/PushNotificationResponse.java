@@ -40,7 +40,7 @@ public class PushNotificationResponse {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param success
 	 * @param rejectionReason
 	 * @return
@@ -53,7 +53,7 @@ public class PushNotificationResponse {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param pushNotification
 	 * @param success
 	 * @param rejectionReason
@@ -70,7 +70,7 @@ public class PushNotificationResponse {
 
 	/**
 	 * 构建推送响应
-	 * 
+	 *
 	 * @param pushNotification
 	 * @param success
 	 * @param rejectionReason
