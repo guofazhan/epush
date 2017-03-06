@@ -16,21 +16,28 @@ import java.security.NoSuchAlgorithmException;
  */
 public class ExampleApp {
 
-    public static void main(String[] args) {
-        final String token = "919c33d368633e51f6ef7a853d6b876333a177a0ff955ddd698fe12b5bb7b71d";
-        try {
-            final ApnsService server = APNS.newApnsServiceBuilder().setP8(new File("D:\\P8\\apns_auth_key_KQH5SH3B63.p8"),
-                    "8TS34KC67Y", "KQH5SH3B63", "cn.10086.app").setEnvironment(ApnsConfigure.Environment.PRODUCTION.name()).setSslProvider(SslProvider.OPENSSL).build();
-
-            ApnsPushNotification pushNotification = APNS.
-                    newNotificationBuilder().setPayload(APNS.newPayload().setAlertBody("Example!").toPayloadStr()).setToken("123").setTopic("cn.10086.app").build();
-            System.out.println(server.push(pushNotification));
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+	public static void main(String[] args) {
+		final String token = "919c33d368633e51f6ef7a853d6b876333a177a0ff955ddd698fe12b5bb7b71d";
+		try {
+			final ApnsService server = APNS.newApnsServiceBuilder()
+					.setP8(new File("E:\\P8\\apns.p8"), "8TS34KC67Y",
+							"KQH5SH3B63", "cn.10086.app")
+					.setEnvironment(ApnsConfigure.Environment.PRODUCTION.name())
+					.setSslProvider(SslProvider.OPENSSL).build();
+			ApnsPushNotification pushNotification = APNS
+					.newNotificationBuilder()
+					.setPayload(APNS.newPayload().setAlertBody("Example!")
+							.toPayloadStr())
+					.setToken(token).setTopic("cn.10086.app").build();
+			for (int i = 0; i < 5; i++) {
+				System.out.println(server.push(pushNotification));
+			}
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
