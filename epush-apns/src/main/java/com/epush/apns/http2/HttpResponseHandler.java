@@ -1,6 +1,7 @@
 package com.epush.apns.http2;
 
 import com.epush.apns.http2.exception.Http2Exception;
+import com.epush.apns.utils.Logger;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by G2Y on 2017/3/4.
+ *
  */
 public class HttpResponseHandler
 		extends SimpleChannelInboundHandler<FullHttpResponse> {
@@ -28,7 +29,7 @@ public class HttpResponseHandler
 	/**
 	 * 响应结果集
 	 */
-	private final Map<Integer, FullHttpResponse> streamidRespMap;
+	private final Map<Integer, Http2Response> streamidRespMap;
 
 	public HttpResponseHandler() {
 		streamidPromiseMap = PlatformDependent.newConcurrentHashMap();
@@ -48,9 +49,9 @@ public class HttpResponseHandler
 	 * @param unit
 	 * @return
 	 */
-	public FullHttpResponse getResponse(int streamId, long timeout,
+	public Http2Response getResponse(int streamId, long timeout,
 			TimeUnit unit) {
-		FullHttpResponse response = null;
+		Http2Response response = null;
 		Map.Entry<ChannelFuture, ChannelPromise> entry = streamidPromiseMap
 				.get(streamId);
 		if (null != entry) {
@@ -77,6 +78,8 @@ public class HttpResponseHandler
 
 			// 移除当前的请求缓存
 			streamidPromiseMap.remove(streamId);
+		} else {
+			response = Http2Response.toHttp2Response(new Http2Exception("Wait Future Is Not Find!"));
 		}
 
 		return response;
@@ -88,27 +91,32 @@ public class HttpResponseHandler
 		Integer streamId = msg.headers().getInt(
 				HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text());
 		if (streamId == null) {
-			System.err.println(
-					"HttpResponseHandler unexpected message received: " + msg);
+			Logger.HTTP2.warn(
+					"HttpResponseHandler unexpected message received: {}", msg);
 			return;
 		}
 
 		Map.Entry<ChannelFuture, ChannelPromise> entry = streamidPromiseMap
 				.get(streamId);
 		if (entry == null) {
-			System.err.println(
-					"Message received for unknown stream id " + streamId);
+			Logger.HTTP2.warn("Message received for unknown stream id ",
+					streamId);
 		} else {
+			String resMsg = "";
 			// Do stuff with the message (for now just print it)
 			ByteBuf content = msg.content();
 			if (content.isReadable()) {
 				int contentLength = content.readableBytes();
 				byte[] arr = new byte[contentLength];
 				content.readBytes(arr);
-				System.out.println(
-						new String(arr, 0, contentLength, CharsetUtil.UTF_8));
+				resMsg = new String(arr, 0, contentLength, CharsetUtil.UTF_8);
+				Logger.HTTP2.info("Message {} received for stream id {}",
+						resMsg, streamId);
 			}
-			streamidRespMap.put(streamId, msg);
+
+			Http2Response response = Http2Response.toHttp2Response(msg);
+			response.setResponse(resMsg);
+			streamidRespMap.put(streamId, response);
 			entry.getValue().setSuccess();
 		}
 	}

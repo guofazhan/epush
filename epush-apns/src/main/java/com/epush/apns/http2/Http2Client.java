@@ -1,12 +1,12 @@
 package com.epush.apns.http2;
 
 import com.epush.apns.http2.exception.Http2Exception;
+import com.epush.apns.utils.Logger;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.util.concurrent.Future;
 
 import java.util.concurrent.ExecutionException;
@@ -122,8 +122,7 @@ public class Http2Client implements Client {
 	 * @throws Http2Exception
 	 */
 	@Override
-	public  Http2Response request(Http2Request request)
-			throws Http2Exception {
+	public Http2Response request(Http2Request request) throws Http2Exception {
 		Http2Response response = null;
 		Channel channel = null;
 		try {
@@ -142,14 +141,9 @@ public class Http2Client implements Client {
 				responseHandler.put(streamId,
 						channel.writeAndFlush(request.toFullHttpRequest()),
 						channel.newPromise());
-				FullHttpResponse httpResponse = responseHandler
+				response = responseHandler
 						.getResponse(streamId, 60000, TimeUnit.MILLISECONDS);
-
-				if (httpResponse != null) {
-					response = Http2Response.toHttp2Response(httpResponse);
-				}
-
-				System.out.println("Finished HTTP/2 request(s)");
+				Logger.HTTP2.info("Finished HTTP/2 request(s)");
 			}
 		} catch (Http2Exception e) {
 			response = Http2Response.toHttp2Response(e);
@@ -195,10 +189,13 @@ public class Http2Client implements Client {
 							return true;
 						}
 					} catch (InterruptedException e) {
+						Logger.HTTP2.error("Shutdown Netty Is Error:", e);
 						throw new Http2Exception(e);
 					} catch (ExecutionException e) {
+						Logger.HTTP2.error("Shutdown Netty Is Error:", e);
 						throw new Http2Exception(e);
 					} catch (TimeoutException e) {
+						Logger.HTTP2.error("Shutdown Netty Is Error:", e);
 						throw new Http2Exception(e);
 					}
 

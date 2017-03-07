@@ -1,5 +1,6 @@
 package com.epush.apns.http2;
 
+import com.epush.apns.utils.Logger;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
@@ -9,8 +10,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.channel.socket.oio.OioServerSocketChannel;
 import io.netty.channel.socket.oio.OioSocketChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -27,8 +26,6 @@ public class SocketChannelClassUtil {
     private static final String EPOLL_EVENT_LOOP_GROUP_CLASS = "io.netty.channel.epoll.EpollEventLoopGroup";
     private static final String EPOLL_SOCKET_CHANNEL_CLASS = "io.netty.channel.epoll.EpollSocketChannel";
     private static final String EPOLL_SERVER_SOCKET_CHANNEL_CLASS = "io.netty.channel.epoll.EpollServerSocketChannel";
-
-    private static final Logger log = LoggerFactory.getLogger(SocketChannelClassUtil.class);
 
     /**
      * @param eventLoopGroup
@@ -80,9 +77,10 @@ public class SocketChannelClassUtil {
     private static Class<? extends Channel> loadSocketChannelClass(final String className) {
         try {
             final Class<?> clazz = Class.forName(className);
-            log.debug("Loaded socket channel class: {}", clazz);
+            Logger.HTTP2.debug("Loaded socket channel class: {}", clazz);
             return clazz.asSubclass(Channel.class);
         } catch (final ClassNotFoundException e) {
+            Logger.HTTP2.error("Load Channel Class Is Error:",e);
             throw new IllegalArgumentException(e);
         }
     }

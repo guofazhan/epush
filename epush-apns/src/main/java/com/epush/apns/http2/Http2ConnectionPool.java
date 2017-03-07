@@ -1,10 +1,9 @@
 package com.epush.apns.http2;
 
+import com.epush.apns.utils.Logger;
 import com.google.common.collect.ArrayListMultimap;
 import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
@@ -24,12 +23,6 @@ public class Http2ConnectionPool {
 	 *
 	 */
 	private static final int DEFAULT_STREAM_ID = 3;
-
-	/**
-	 *
-	 */
-	private static final Logger logger = LoggerFactory
-			.getLogger(Http2ConnectionPool.class);
 
 	/**
 	 *
@@ -83,12 +76,13 @@ public class Http2ConnectionPool {
 			Channel channel = it.next();
 			it.remove();
 			if (channel.isActive()) {
-				logger.debug("tryAcquire channel success, host={}", host);
+				com.epush.apns.utils.Logger.HTTP2
+						.debug("tryAcquire channel success, host={}", host);
 				channel.attr(hostKey).set(host);
 				return channel;
 			} else {
 				// 链接由于意外情况不可用了, 比如: keepAlive_timeout
-				logger.warn(
+				Logger.HTTP2.warn(
 						"tryAcquire channel false channel is inactive, host={}",
 						host);
 			}
@@ -106,8 +100,8 @@ public class Http2ConnectionPool {
 			channel = this.client.getBootstrap()
 					.connect(host.getHost(), host.getPort())
 					.syncUninterruptibly().channel();
-			System.out.println("Connected to [" + host.getHost() + ':'
-					+ host.getPort() + ']');
+			Logger.HTTP2.info("Connected to Ip {},port {}", host.getHost(),
+					host.getPort());
 			if (channel != null && channel.isActive()) {
 				// 等待http2设置
 				Http2SettingsHandler settingsHandler = this.client
@@ -118,7 +112,7 @@ public class Http2ConnectionPool {
 				attachStreamId(DEFAULT_STREAM_ID, channel);
 			}
 		} else {
-			logger.warn("get connection Error Client is shutdown");
+			Logger.HTTP2.warn("get connection Error Client is shutdown");
 		}
 		return channel;
 	}
@@ -133,21 +127,19 @@ public class Http2ConnectionPool {
 			Integer streamId = channel.attr(streamIdKey).get();
 			streamId += 2;
 			if (streamId >= STREAM_ID_RESET_THRESHOLD) {
-				logger.debug(
+				Logger.HTTP2.debug(
 						"tryRelease channel pool size over streamId={}, host={}, channel closed.",
 						streamId, host);
 				channel.close();
 			} else {
 				if (channel.isActive()) {
-					System.out.println(
-							"tryRelease channel success, host={}" + host);
-					logger.debug("tryRelease channel success, host={}", host);
+					Logger.HTTP2.debug("tryRelease channel success, host={}", host);
 					channel.attr(streamIdKey).set(streamId);
 					channelPool.put(host.toString(), channel);
 				}
 			}
 		} else {
-			logger.debug(
+			Logger.HTTP2.debug(
 					"tryRelease channel pool size over limit={}, host={}, channel closed.",
 					maxConnPerHost, host);
 			channel.close();

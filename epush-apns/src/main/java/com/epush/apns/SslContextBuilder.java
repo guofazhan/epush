@@ -2,13 +2,12 @@ package com.epush.apns;
 
 import com.epush.apns.authentication.P12;
 import com.epush.apns.exception.InvalidSSLConfig;
+import com.epush.apns.utils.Logger;
 import io.netty.handler.codec.http2.Http2SecurityUtil;
 import io.netty.handler.ssl.*;
 import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
 import java.io.File;
@@ -24,9 +23,6 @@ import java.security.cert.X509Certificate;
  * @since [产品/模块版本]
  */
 public class SslContextBuilder {
-
-	private static final Logger logger = LoggerFactory
-			.getLogger(SslContextBuilder.class);
 
 	/**
 	 *
@@ -116,16 +112,16 @@ public class SslContextBuilder {
 			} else {
 				if (OpenSsl.isAvailable()) {
 					if (OpenSsl.isAlpnSupported()) {
-						logger.info(
+						Logger.APNS.info(
 								"Native SSL provider is available and supports ALPN; will use native provider.");
 						sslProvider = SslProvider.OPENSSL;
 					} else {
-						logger.info(
+						Logger.APNS.info(
 								"Native SSL provider is available, but does not support ALPN; will use JDK SSL provider.");
 						sslProvider = SslProvider.JDK;
 					}
 				} else {
-					logger.info(
+					Logger.APNS.info(
 							"Native SSL provider not available; will use JDK SSL provider.");
 					sslProvider = SslProvider.JDK;
 				}
@@ -157,7 +153,7 @@ public class SslContextBuilder {
 				// 开始构建SslContext
 				sslContext = builder.build();
 			} catch (SSLException e) {
-				logger.error("SslContext build Error:", e);
+				Logger.APNS.error("SslContext build Error:", e);
 				throw new InvalidSSLConfig("SslContext build Error", e);
 			}
 		}
