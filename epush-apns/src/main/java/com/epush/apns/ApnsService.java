@@ -2,10 +2,17 @@ package com.epush.apns;
 
 import com.epush.apns.authentication.P8;
 import com.epush.apns.exception.ApnsException;
-import com.epush.apns.http2.*;
+import com.epush.apns.http2.Host;
+import com.epush.apns.http2.Http2Client;
+import com.epush.apns.http2.Http2Request;
+import com.epush.apns.http2.Http2Response;
 import com.epush.apns.utils.Logger;
 
 import java.security.SignatureException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * apns 发送推送消息服务，负责下发消息到 ios apns服务器
@@ -32,6 +39,12 @@ public final class ApnsService
 	 * 请求客户端
 	 */
 	private Http2Client client;
+
+	/**
+	 *
+	 */
+	ExecutorService executorService = Executors.newFixedThreadPool(3,
+			Executors.defaultThreadFactory());
 
 	/**
 	 *
@@ -84,8 +97,8 @@ public final class ApnsService
 	 * @throws ApnsException
 	 */
 	@Override
-	public PushNotificationResponse push(ApnsPushNotification pushNotification)
-			throws ApnsException {
+	public PushNotificationResponse syncPush(
+			ApnsPushNotification pushNotification) throws ApnsException {
 		PushNotificationResponse response = null;
 		try {
 			Http2Response http2Response = client
@@ -105,6 +118,19 @@ public final class ApnsService
 		}
 
 		return response;
+	}
+
+	/**
+	 * 异步单个推送
+	 *
+	 * @param apnsPushNotification
+	 * @return
+	 * @throws ApnsException
+	 */
+	@Override
+	public Future<PushNotificationResponse> asynPush(
+			ApnsPushNotification apnsPushNotification) throws ApnsException {
+		return executorService.submit(new AsynPushTask(this, apnsPushNotification));
 	}
 
 	/**
@@ -145,6 +171,45 @@ public final class ApnsService
 					http2Response);
 		}
 		return PushNotificationResponse.build(http2Response);
+	}
+
+	/**
+	 * 异步推送任务
+	 */
+	class AsynPushTask implements Callable<PushNotificationResponse> {
+
+		/**
+		 * 推送服务
+		 */
+		private final ApnsService service;
+
+		/**
+		 * 推送消息
+		 */
+		private final ApnsPushNotification pushNotification;
+
+		/**
+		 * 
+		 * @param service
+		 * @param pushNotification
+		 */
+		protected AsynPushTask(ApnsService service,
+				ApnsPushNotification pushNotification) {
+			this.service = service;
+			this.pushNotification = pushNotification;
+		}
+
+		/**
+		 * Computes a result, or throws an exception if unable to do so.
+		 *
+		 * @return computed result
+		 * @throws Exception
+		 *             if unable to compute a result
+		 */
+		@Override
+		public PushNotificationResponse call() throws Exception {
+			return service.syncPush(pushNotification);
+		}
 	}
 
 }

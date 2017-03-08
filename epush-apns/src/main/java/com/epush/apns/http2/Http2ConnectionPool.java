@@ -3,7 +3,6 @@ package com.epush.apns.http2;
 import com.epush.apns.utils.Logger;
 import com.google.common.collect.ArrayListMultimap;
 import io.netty.channel.Channel;
-import io.netty.util.AttributeKey;
 
 import java.util.Iterator;
 import java.util.List;
@@ -27,24 +26,13 @@ public class Http2ConnectionPool {
 	/**
 	 *
 	 */
-	private final AttributeKey<Host> hostKey = AttributeKey.newInstance("host");
-
-	/**
-	 *
-	 */
-	public static final AttributeKey<Integer> streamIdKey = AttributeKey
-			.newInstance("streamId");
-
-	/**
-	 *
-	 */
 	private final ArrayListMultimap<String, Channel> channelPool = ArrayListMultimap
 			.create();
 
 	/**
 	 *
 	 */
-	private static final long DEFAULT_CONNECT_OUTTIME = 5000;
+	private static final long DEFAULT_CONNECT_OUTTIME = 3000;
 
 	/**
 	 *
@@ -78,7 +66,7 @@ public class Http2ConnectionPool {
 			if (channel.isActive()) {
 				com.epush.apns.utils.Logger.HTTP2
 						.debug("tryAcquire channel success, host={}", host);
-				channel.attr(hostKey).set(host);
+				channel.attr(ChannelContext.hostKey).set(host);
 				return channel;
 			} else {
 				// 链接由于意外情况不可用了, 比如: keepAlive_timeout
@@ -103,10 +91,12 @@ public class Http2ConnectionPool {
 			Logger.HTTP2.info("Connected to Ip {},port {}", host.getHost(),
 					host.getPort());
 			if (channel != null && channel.isActive()) {
+				//设置当前channel中Handler
+				Http2SettingsHandler settingsHandler= buildSettingHandler(channel);
+				buildResponseHandler(channel);
 				// 等待http2设置
-				Http2SettingsHandler settingsHandler = this.client
-						.getInitializer().getSettingsHandler();
-				settingsHandler.awaitSettings(3000, TimeUnit.MILLISECONDS);
+				settingsHandler.awaitSettings(DEFAULT_CONNECT_OUTTIME,
+						TimeUnit.MILLISECONDS);
 				// 设置当前channel属性信息
 				attachHost(host, channel);
 				attachStreamId(DEFAULT_STREAM_ID, channel);
@@ -121,10 +111,10 @@ public class Http2ConnectionPool {
 	 * @param channel
 	 */
 	public synchronized void tryRelease(Channel channel) {
-		Host host = channel.attr(hostKey).getAndSet(null);
+		Host host = channel.attr(ChannelContext.hostKey).getAndSet(null);
 		List<Channel> channels = channelPool.get(host.toString());
 		if (channels == null || channels.size() < maxConnPerHost) {
-			Integer streamId = channel.attr(streamIdKey).get();
+			Integer streamId = channel.attr(ChannelContext.streamIdKey).get();
 			streamId += 2;
 			if (streamId >= STREAM_ID_RESET_THRESHOLD) {
 				Logger.HTTP2.debug(
@@ -133,8 +123,9 @@ public class Http2ConnectionPool {
 				channel.close();
 			} else {
 				if (channel.isActive()) {
-					Logger.HTTP2.debug("tryRelease channel success, host={}", host);
-					channel.attr(streamIdKey).set(streamId);
+					Logger.HTTP2.debug("tryRelease channel success, host={}",
+							host);
+					channel.attr(ChannelContext.streamIdKey).set(streamId);
 					channelPool.put(host.toString(), channel);
 				}
 			}
@@ -147,11 +138,36 @@ public class Http2ConnectionPool {
 	}
 
 	/**
+	 * 构建channel 的settingHandler
+	 *
+	 * @param channel
+	 * @return
+	 */
+	protected Http2SettingsHandler buildSettingHandler(Channel channel) {
+		Http2SettingsHandler settingsHandler = new Http2SettingsHandler(
+				channel.newPromise());
+		channel.attr(ChannelContext.settingHandlerKey).set(settingsHandler);
+		return settingsHandler;
+	}
+
+	/**
+	 * 构建channel HttpResponseHandler
+	 *
+	 * @param channel
+	 * @return
+	 */
+	protected HttpResponseHandler buildResponseHandler(Channel channel) {
+		HttpResponseHandler responseHandler = new HttpResponseHandler();
+		channel.attr(ChannelContext.responseHandlerKey).set(responseHandler);
+		return responseHandler;
+	}
+
+	/**
 	 * @param host
 	 * @param channel
 	 */
 	public void attachHost(Host host, Channel channel) {
-		channel.attr(hostKey).set(host);
+		channel.attr(ChannelContext.hostKey).set(host);
 	}
 
 	/**
@@ -159,7 +175,7 @@ public class Http2ConnectionPool {
 	 * @param channel
 	 */
 	public void attachStreamId(Integer streamId, Channel channel) {
-		channel.attr(streamIdKey).set(streamId);
+		channel.attr(ChannelContext.streamIdKey).set(streamId);
 	}
 
 	/**

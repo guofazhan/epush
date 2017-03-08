@@ -21,51 +21,25 @@ public abstract class Http2ClientInitializer
 			Http2ClientInitializer.class);
 	private final SslContext sslCtx;
 	private final int maxContentLength;
-	private HttpToHttp2ConnectionHandler connectionHandler;
-	private Http2SettingsHandler settingsHandler;
-
-	private HttpResponseHandler responseHandler;
 
 	public Http2ClientInitializer(SslContext sslCtx, int maxContentLength) {
 		this.sslCtx = sslCtx;
 		this.maxContentLength = maxContentLength;
 	}
 
-	public HttpResponseHandler getResponseHandler() {
-		return responseHandler;
-	}
-
-	public Http2SettingsHandler getSettingsHandler() {
-		return settingsHandler;
-	}
-
 	@Override
 	protected void initChannel(SocketChannel socketChannel) throws Exception {
-		responseHandler = new HttpResponseHandler();
-		settingsHandler = new Http2SettingsHandler(socketChannel.newPromise());
-		final Http2Connection connection = new DefaultHttp2Connection(false);
-
-		connectionHandler = new HttpToHttp2ConnectionHandlerBuilder()
-				.frameListener(
-						new DelegatingDecompressorFrameListener(connection,
-								new InboundHttp2ToHttpAdapterBuilder(connection)
-										.maxContentLength(maxContentLength)
-										.propagateSettings(true).build()))
-				.frameLogger(logger).connection(connection).build();
 		configure(socketChannel);
 		if (sslCtx != null) {
 			ChannelPipeline pipeline = socketChannel.pipeline();
 			pipeline.addLast(sslCtx.newHandler(socketChannel.alloc()));
-			// We must wait for the handshake to finish and the protocol to be
-			// negotiated before configuring
-			// the HTTP/2 components of the pipeline.
 			pipeline.addLast(new ApplicationProtocolNegotiationHandler("") {
 				@Override
 				protected void configurePipeline(ChannelHandlerContext ctx,
 						String protocol) {
 					if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
 						ChannelPipeline p = ctx.pipeline();
-						p.addLast(connectionHandler);
+						p.addLast(buildConnHandler());
 						configureEndOfPipeline(p);
 						return;
 					}
@@ -82,11 +56,30 @@ public abstract class Http2ClientInitializer
 	}
 
 	/**
+	 * 构建一个HttpToHttp2ConnectionHandler
+	 * 
+	 * @return
+	 */
+	protected HttpToHttp2ConnectionHandler buildConnHandler() {
+		final Http2Connection connection = new DefaultHttp2Connection(false);
+		return new HttpToHttp2ConnectionHandlerBuilder()
+				.frameListener(
+						new DelegatingDecompressorFrameListener(connection,
+								new InboundHttp2ToHttpAdapterBuilder(connection)
+										.maxContentLength(maxContentLength)
+										.propagateSettings(true).build()))
+				.frameLogger(logger).connection(connection).build();
+	}
+
+
+
+	/**
 	 * 
 	 * @param pipeline
 	 */
 	protected void configureEndOfPipeline(ChannelPipeline pipeline) {
-		pipeline.addLast(settingsHandler, responseHandler);
+		pipeline.addLast(pipeline.channel().attr(ChannelContext.settingHandlerKey).get(),
+				pipeline.channel().attr(ChannelContext.responseHandlerKey).get());
 	}
 
 	/**

@@ -135,19 +135,21 @@ public class Http2Client implements Client {
 				response = Http2Response.toHttp2Response(
 						new Http2Exception("GET CONNECTION Fail!"));
 			} else {
-				HttpResponseHandler responseHandler = initializer
-						.getResponseHandler();
-				int streamId = channel.attr(pool.streamIdKey).get();
+				HttpResponseHandler responseHandler = channel
+						.attr(ChannelContext.responseHandlerKey).get();
+				int streamId = channel.attr(ChannelContext.streamIdKey).get();
 				responseHandler.put(streamId,
 						channel.writeAndFlush(request.toFullHttpRequest()),
 						channel.newPromise());
-				response = responseHandler
-						.getResponse(streamId, 60000, TimeUnit.MILLISECONDS);
+				response = responseHandler.getResponse(streamId,
+						readAndWriterTimeout, TimeUnit.MILLISECONDS);
 				Logger.HTTP2.info("Finished HTTP/2 request(s)");
 			}
 		} catch (Http2Exception e) {
+			e.printStackTrace();
 			response = Http2Response.toHttp2Response(e);
 		} catch (Exception e) {
+			e.printStackTrace();
 			response = Http2Response.toHttp2Response(new Http2Exception(e));
 		} finally {
 			if (null != channel) {
